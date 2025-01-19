@@ -11,7 +11,7 @@ import sys
 
 # import pandas as pd
 import geopandas as gpd
-# import numpy as np
+import numpy as np
 # import matplotlib.pyplot as plt
 # import duckdb
 
@@ -32,7 +32,7 @@ def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
+        base_path = sys._MEIPASS2
     except Exception:
         base_path = os.path.abspath(".")
 
@@ -51,6 +51,21 @@ class MainWindow(QMainWindow):
         self.__data['municipio'] = self.__data['cd_RegiaoRisco'].astype(str).str[:7]
         self.__data['uf'] = self.__data['cd_RegiaoRisco'].astype(str).str[:2]
         self.__data['macrorregiao'] = self.__data['cd_RegiaoRisco'].astype(str).str[:1]
+
+        self.__data['regiao'] = np.where(self.__data['uf'] == '35', 'SP', 
+                                np.where(self.__data['uf'] == '33', 'RJ',
+                                np.where(self.__data['uf'] == '31', 'MG',
+                                np.where(self.__data['uf'] == '32', 'ES',
+                                np.where(self.__data['uf'] == '41', 'PR',
+                                np.where(self.__data['uf'] == '42', 'SC',
+                                np.where(self.__data['uf'] == '43', 'RS',
+                                np.where(self.__data['uf'] == '50', 'MT',
+                                np.where(self.__data['uf'] == '51', 'MS',
+                                np.where(self.__data['uf'] == '52', 'GO',
+                                np.where(self.__data['uf'] == '53', 'DF',
+                                np.where(self.__data['macrorregiao'] == '2', 'NE', 'NO'
+                                        ))))))))))))
+        
 
         self.__initUi()
 
@@ -99,16 +114,37 @@ class MainWindow(QMainWindow):
 
         lista_regioes = QComboBox()
         lista_regioes.addItem('')
-        lista_regioes.addItem('3550308')
-        lista_regioes.addItem('2927408')
-        lista_regioes.addItem('3106200')
+        lista_regioes.addItem('SP')
+        lista_regioes.addItem('RJ')
+        lista_regioes.addItem('MG')
+        lista_regioes.addItem('ES')
+        lista_regioes.addItem('PR')
+        lista_regioes.addItem('SC')
+        lista_regioes.addItem('RS')
+        lista_regioes.addItem('MT')
+        lista_regioes.addItem('MS')
+        lista_regioes.addItem('GO')
+        lista_regioes.addItem('DF')
+        lista_regioes.addItem('NE')
+        lista_regioes.addItem('NO')
+        lista_regioes.setStyleSheet(
+            """
+            font-size: 14px;
+            """
+        )
+
+
         lista_regioes.currentTextChanged.connect(lambda x: self.__btn_load_regiao.setEnabled(True) if lista_regioes.currentText() != self.__reg_selected else self.__btn_load_regiao.setEnabled(False))
 
 
         self.__btn_load_regiao = QPushButton('Carregar Regiao')
         self.__btn_load_regiao.setCursor(QCursor(Qt.PointingHandCursor))
         self.__btn_load_regiao.clicked.connect(lambda x: self.__load_regiao(lista_regioes.currentText()))
-
+        self.__btn_load_regiao.setStyleSheet(
+            """
+            font-size: 14px;
+            """
+        )
 
 
         self.__statusLabel = QLabel('Nenhum mapa carregado')
@@ -216,7 +252,7 @@ class MainWindow(QMainWindow):
             self.__statusLabel.setText(f'Filtrando arquivos...')
             self.__progressBar.setValue(0)
 
-            df_flt = self.__data[self.__data['municipio'] == regiao]
+            df_flt = self.__data[self.__data['regiao'] == regiao]
 
             for i in range(20):
                 self.__progressBar.setValue(i)
