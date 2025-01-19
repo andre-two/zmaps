@@ -6,26 +6,25 @@
 import os, posixpath
 import sys
 
-from flask import Flask, request, jsonify
-import sqlite3
+# from flask import Flask, request, jsonify
+# import sqlite3
 
-
-import pandas as pd
+# import pandas as pd
 import geopandas as gpd
-import numpy as np
+# import numpy as np
 # import matplotlib.pyplot as plt
 # import duckdb
 
-import folium
+# import folium
 
 from PyQt5.QtCore import QThread, QUrl, Qt #, QTimer, QRect, QPoint, QEvent,
 from PyQt5.QtGui import QCursor #QPalette, , QRegion, QPainter
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QApplication, QMainWindow, QRadioButton, \
-    QWidget, QHBoxLayout, QVBoxLayout, QMenu, \
-    QSizePolicy, QStyle, QStyleOption, QStyleHintReturnMask, \
-    QLabel, QPushButton, QFrame, QLineEdit, QTableWidget, \
-    QGroupBox, QListWidget, QComboBox, QProgressBar
+    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFrame, \
+    QGroupBox, QComboBox, QProgressBar
+    # QMenu, QLineEdit, QTableWidget, QListWidget,  \
+    # QSizePolicy, QStyle, QStyleOption, QStyleHintReturnMask, \
 
 
 
@@ -240,7 +239,7 @@ class MainWindow(QMainWindow):
                                     column = 'Loss_Obs_wo_ulae',
                                     cmap = 'coolwarm',).save('mapa_lr.html')
 
-            for i in range(60, 100):
+            for i in range(60, 101):
                 self.__progressBar.setValue(i)
 
             self.__statusLabel.setText(f'Mapas da regiao {regiao} prontos!')
@@ -267,27 +266,28 @@ class MainWindow(QMainWindow):
 
 
 
-class FlaskThread(QThread):
+# class FlaskThread(QThread):
 
-    def __init__(self, application):
-        QThread.__init__(self)
-        self.application = application
+#     def __init__(self, application):
+#         QThread.__init__(self)
+#         self.application = application
 
-    def __del__(self):
-        self.wait()
+#     def __del__(self):
+#         self.wait()
 
-    def run(self):
-        self.application.run(port=5000)
+#     def run(self):
+#         self.application.run(port=5000)
 
 
 
-def start_app_qt(application):
+# def start_app_qt(application):
+def start_app_qt():
     qtapp = QApplication(sys.argv)
 
-    webapp = FlaskThread(application)
-    webapp.start()
+    # webapp = FlaskThread(application)
+    # webapp.start()
 
-    qtapp.aboutToQuit.connect(webapp.terminate)
+    # qtapp.aboutToQuit.connect(webapp.terminate)
 
     w = MainWindow()
     w.show()
@@ -298,30 +298,31 @@ def start_app_qt(application):
 
 if __name__ == "__main__":
 
-    app = Flask(__name__)
+    # app = Flask(__name__)
 
-    @app.route('/add_marker', methods=['POST'])
-    def add_marker():
-        try:
-            # Get the marker data from the request body
-            data = request.get_json()
-            print('saved in server-side')
+    # @app.route('/add_marker', methods=['POST'])
+    # def add_marker():
+    #     try:
+    #         # Get the marker data from the request body
+    #         data = request.get_json()
+    #         print('saved in server-side')
 
-            # Save the marker data to the SQLite3 database file
-            conn = sqlite3.connect('markers.db')
-            c = conn.cursor()
-            c.execute('INSERT INTO markers (lat, lng) VALUES (?, ?)', (data['lat'], data['lng']))
-            conn.commit()
-            conn.close()
+    #         # Save the marker data to the SQLite3 database file
+    #         conn = sqlite3.connect('markers.db')
+    #         c = conn.cursor()
+    #         c.execute('INSERT INTO markers (lat, lng) VALUES (?, ?)', (data['lat'], data['lng']))
+    #         conn.commit()
+    #         conn.close()
 
-            # Do something with the lat and lng values, like adding them to a 
-            # database
-            return jsonify({'status': 'ok'})
-        except Exception as e:
-            print(e)
-            raise Exception
+    #         # Do something with the lat and lng values, like adding them to a 
+    #         # database
+    #         return jsonify({'status': 'ok'})
+    #     except Exception as e:
+    #         print(e)
+    #         raise Exception
 
 
 
-    sys.exit(start_app_qt(app))
+    # sys.exit(start_app_qt(app))
+    sys.exit(start_app_qt())
 
