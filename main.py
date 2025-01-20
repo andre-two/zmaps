@@ -297,17 +297,31 @@ class MainWindow(QMainWindow):
 
         # cria rank para os dados sem valores nulos
         COLUNA = f'rank_{kpi}'
-        dados_not_na[COLUNA] = self.__weighted_qcut(dados_not_na[column], dados_not_na[WEIGHT], 10, labels = False)
 
-        # calcula os representante de cada percentil
-        valores = dados_not_na.groupby(COLUNA)[column].min()
-        v2 = valores[2]
-        v3 = valores[3]
-        v5 = valores[5]
-        v7 = valores[7]
-        v8 = valores[8]
         v0, v10 = dados_not_na[column].dropna().min(), dados_not_na[column].dropna().max()
+        try:
+            dados_not_na[COLUNA] = self.__weighted_qcut(dados_not_na[column], dados_not_na[WEIGHT], 10, labels = False)
 
+            # calcula os representante de cada percentil
+            valores = dados_not_na.groupby(COLUNA)[column].min()
+            v2 = valores[2]
+            v3 = valores[3]
+            v5 = valores[5]
+            v7 = valores[7]
+            v8 = valores[8]
+
+        except:
+            dados_not_na[COLUNA] = self.__weighted_qcut(dados_not_na[column], dados_not_na[WEIGHT], 2, labels = False)
+
+            # calcula os representante de cada percentil
+            valores = dados_not_na.groupby(COLUNA)[column].min()
+            v5 = valores[1]
+            v2 = v0 + 0.4 * (v5 - v0)
+            v3 = v0 + 0.6 * (v5 - v0)
+            v7 = v5 + 0.4 * (v10 - v5)
+            v8 = v5 + 0.6 * (v10 - v5)
+
+        print(valores)
         
         # cria mapa de cores
         # minimo, maximo = dados_not_na[COLUNA].dropna().min(), dados_not_na[COLUMN].dropna().max()
