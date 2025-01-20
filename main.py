@@ -9,17 +9,20 @@ import sys
 # from flask import Flask, request, jsonify
 # import sqlite3
 
-# import pandas as pd
+import pandas as pd
+from pandas._libs.lib import is_integer
+
 import geopandas as gpd
 import numpy as np
-# import matplotlib.pyplot as plt
-# import duckdb
 
-# import folium
+import branca.colormap as cm
+
+
 
 from PyQt5.QtCore import QThread, QUrl, Qt #, QTimer, QRect, QPoint, QEvent,
 from PyQt5.QtGui import QCursor #QPalette, , QRegion, QPainter
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
+
 from PyQt5.QtWidgets import QApplication, QMainWindow, QRadioButton, \
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFrame, \
     QGroupBox, QComboBox, QProgressBar
@@ -76,8 +79,6 @@ class MainWindow(QMainWindow):
         self.__view = QWebEngineView()
 
 
-
-
         lay = QVBoxLayout()
         lay.addWidget(self.__view)
 
@@ -107,29 +108,25 @@ class MainWindow(QMainWindow):
         kpi_OptionGrpBox.setLayout(lay)
 
         
-        # kpi_OptionGrpBox.selectionChanged.connect(self.__selectionChanged)
-
-
-
 
         lista_regioes = QComboBox()
         lista_regioes.addItem('')
         lista_regioes.addItem('SP')
-        lista_regioes.addItem('RJ')
         lista_regioes.addItem('MG')
         lista_regioes.addItem('ES')
+        lista_regioes.addItem('RJ')
+        lista_regioes.addItem('GO')
+        lista_regioes.addItem('DF')
+        lista_regioes.addItem('MS')
+        lista_regioes.addItem('MT')
         lista_regioes.addItem('PR')
         lista_regioes.addItem('SC')
         lista_regioes.addItem('RS')
-        lista_regioes.addItem('MT')
-        lista_regioes.addItem('MS')
-        lista_regioes.addItem('GO')
-        lista_regioes.addItem('DF')
         lista_regioes.addItem('NE')
         lista_regioes.addItem('NO')
         lista_regioes.setStyleSheet(
             """
-            font-size: 14px;
+            font-size: 15px;
             """
         )
 
@@ -142,7 +139,7 @@ class MainWindow(QMainWindow):
         self.__btn_load_regiao.clicked.connect(lambda x: self.__load_regiao(lista_regioes.currentText()))
         self.__btn_load_regiao.setStyleSheet(
             """
-            font-size: 14px;
+            font-size: 13px;
             """
         )
 
@@ -239,6 +236,109 @@ class MainWindow(QMainWindow):
 
 
 
+    def __criar_color_map(self, positivo = True, indices = [0, 0.2, 0.3, 0.5, 0.7, 0.8, 1.]):
+        q0, q10 = indices[0], indices[-1]
+        n0, n2, n3, n5, n7, n8, n10 = [(j - q0)/(q10 - q0) for j in indices]
+
+        if positivo:
+            return cm.LinearColormap(
+                [(0.6980392156862745, 0.09411764705882353, 0.16862745098039217, 1.0),
+                (0.9372549019607843, 0.5411764705882353, 0.3843137254901961, 1.0),
+                (0.9921568627450981, 0.8588235294117647, 0.7803921568627451, 1.0),
+                # (0.8196078431372549, 0.8980392156862745, 0.9411764705882353, 1.0),
+                (0.403921568627451, 0.6627450980392157, 0.8117647058823529, 1.0),
+                (0.12941176470588237, 0.4, 0.6745098039215687, 1.0)], 
+
+                # [0., 0.2, 0.5,  0.7, 1.],
+                [n0, n2, n5, n7, n10],
+                # [0., 0.2, 0.5,  0.7, 1.],
+                max_labels = 0
+                ).scale(q0, q10)
+        
+        else:
+            return cm.LinearColormap(
+                [(0.12941176470588237, 0.4, 0.6745098039215687, 1.0),
+                (0.403921568627451, 0.6627450980392157, 0.8117647058823529, 1.0),
+                # (0.8196078431372549, 0.8980392156862745, 0.9411764705882353, 1.0),
+                (0.9921568627450981, 0.8588235294117647, 0.7803921568627451, 1.0),
+                (0.9372549019607843, 0.5411764705882353, 0.3843137254901961, 1.0),
+                (0.6980392156862745, 0.09411764705882353, 0.16862745098039217, 1.0)], 
+
+                [n0, n3, n5, n8, n10],
+                # [0., 0.3, 0.5, 0.8, 1.],
+                max_labels = 0
+                ).scale(q0, q10)
+        
+
+    def __weighted_qcut(self, values, weights, q, **kwargs):
+        'Return weighted quantile cuts from a given series, values.'
+        if is_integer(q):
+            quantiles = np.linspace(0, 1, q + 1)
+        else:
+            quantiles = q
+        order = weights.iloc[values.argsort()].cumsum()
+        bins = pd.cut(order / order.iloc[-1], quantiles, **kwargs)
+
+        return bins.sort_index()
+    
+
+
+    def __criar_mapas(self, dados, column, kpi):
+        # define coluna peso para qebrar decis
+        if kpi == 'hr':
+            WEIGHT = 'n_calculos'
+        elif kpi == 'lr':
+            WEIGHT = 'Exposicao'
+        
+        # separa dados com e sem valores nulos
+        dados_not_na = dados.dropna(subset = [column]).reset_index(drop = True)
+        dados_na = dados[dados[column].isna()].reset_index(drop = True)
+
+
+        # cria rank para os dados sem valores nulos
+        COLUNA = f'rank_{kpi}'
+        dados_not_na[COLUNA] = self.__weighted_qcut(dados_not_na[column], dados_not_na[WEIGHT], 10, labels = False)
+
+        # calcula os representante de cada percentil
+        valores = dados_not_na.groupby(COLUNA)[column].min()
+        v2 = valores[2]
+        v3 = valores[3]
+        v5 = valores[5]
+        v7 = valores[7]
+        v8 = valores[8]
+        v0, v10 = dados_not_na[column].dropna().min(), dados_not_na[column].dropna().max()
+
+        
+        # cria mapa de cores
+        # minimo, maximo = dados_not_na[COLUNA].dropna().min(), dados_not_na[COLUMN].dropna().max()
+
+        # print('*********** ' , column,  minimo, maximo)
+        # print(dados.sort_values(column, ascending = False).head(1))
+
+        if kpi == 'hr':
+            color_map = self.__criar_color_map(positivo = True, indices = [v0, v2, v3, v5, v7, v8, v10])
+        elif kpi == 'lr':
+            color_map = self.__criar_color_map(positivo = False, indices = [v0, v2, v3, v5, v7, v8, v10])
+
+        # color_map = color_map.scale(minimo, maximo)
+
+
+
+
+        m = dados_not_na.explore(tiles = 'cartodb positron',
+                                column = column,
+                                cmap = color_map,)
+        
+        if dados_na.shape[0] > 0:
+            m = dados_na.explore(m = m, color='black')
+        
+        m.save(f'mapa_{kpi}.html')
+
+        return None
+
+
+
+
     def __load_regiao(self, regiao):
         if regiao == '':
             # map_filename = os.path.join(self.__cd, f'map_start.html').replace(os.path.sep, posixpath.sep)
@@ -260,9 +360,11 @@ class MainWindow(QMainWindow):
 
             self.__statusLabel.setText(f'Criando mapa HR...')
 
-            df_flt.explore(tiles = 'cartodb positron', 
-                                    column = 'hr',
-                                    cmap = 'coolwarm',).save('mapa_hr.html')
+            self.__criar_mapas(df_flt, 'hr', 'hr')
+
+            # df_flt.explore(tiles = 'cartodb positron', 
+            #                         column = 'hr',
+            #                         cmap = 'coolwarm',).save('mapa_hr.html')
 
 
             for i in range(20, 60):
@@ -271,9 +373,12 @@ class MainWindow(QMainWindow):
 
             self.__statusLabel.setText(f'Criando mapa LR...')
 
-            df_flt.explore(tiles = 'cartodb positron', 
-                                    column = 'Loss_Obs_wo_ulae',
-                                    cmap = 'coolwarm',).save('mapa_lr.html')
+            self.__criar_mapas(df_flt, 'Loss_Obs_wo_ulae', 'lr')
+
+
+            # df_flt.explore(tiles = 'cartodb positron', 
+            #                         column = 'Loss_Obs_wo_ulae',
+            #                         cmap = 'coolwarm',).save('mapa_lr.html')
 
             for i in range(60, 101):
                 self.__progressBar.setValue(i)
