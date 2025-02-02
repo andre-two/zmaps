@@ -1,2 +1,4 @@
 build/*
 dist/main/*
+data/dbase.db
+notebooks/RegiaoRisco_h3_geo.parquet
